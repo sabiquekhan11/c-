@@ -1,0 +1,644 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title> ultimate showroom </title>
+  <style>
+    :root{
+      --bg-color:#0b0f13;
+      --card-bg:rgba(151, 150, 150, 0.103);
+      --accent:#143de0;
+      --glass: rgba(255,255,255,0.04);
+      --text:#e6e3f2;
+      --muted:#efeff6;
+      --background-image: url('https://images6.alphacoders.com/109/thumb-1920-1090239.jpg');
+      --max-width:1200px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;color:var(--text)}
+    body{
+      background-color:var(--bg-color);
+      background-image: linear-gradient(rgba(3,6,10,0.75), rgba(3,6,10,0.75)), var(--background-image);
+      background-size: cover;
+      background-position: center;
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      padding:50px 20px;
+      display:flex;justify-content:center;
+    }
+    .wrap{width:100%;max-width:var(--max-width)}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:22px}
+    .logo{font-weight:700;font-size:22px;color:var(--accent)}
+    .subtitle{color:var(--muted);font-size:13px}
+
+    /* Controls */
+    .controls{display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .search, .select{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:10px 12px;border-radius:10px;color:var(--text)}
+    .search input{background:transparent;border:0;outline:none;color:var(--text);width:260px}
+    .select select{background:transparent;border:0;color:var(--text);outline:none}
+    
+    /*Grid */ 
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:18px}
+    .card{background:var(--card-bg);border-radius:12px;padding:12px;overflow:hidden;border:1px solid rgba(255,255,255,0.03);backdrop-filter: blur(4px)}
+    .thumb{width:100%;height:160px;object-fit:cover;border-radius:8px;cursor:pointer;display:block}
+    .meta{display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+    .meta h4{margin:0;font-size:16px}
+    .meta .brand{font-size:13px;color:var(--muted)}
+    .specs{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.3}
+
+    footer{color:var(--muted);text-align:center;margin-top:28px;font-size:13px}
+
+    /* Modal */
+    .modal{position:fixed;inset:0;display:none;background:rgba(2,6,12,0.85);z-index:9999;align-items:center;justify-content:center;padding:24px}
+    .modal.open{display:flex}
+    .modal-content{max-width:1200px;width:100%;display:grid;grid-template-columns:1fr 360px;gap:18px;align-items:start}
+    .modal-left{display:flex;flex-direction:column;gap:12px}
+    .modal-img-wrap{background:#071017;border-radius:10px;padding:12px;display:flex;align-items:center;justify-content:center}
+    .modal-img{max-width:100%;max-height:75vh;transform-origin:center center;transition:transform .12s ease}
+    .zoom-controls{display:flex;gap:8px}
+    .btn{background:var(--glass);border:1px solid rgba(255,255,255,0.04);padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--text)}
+    .details{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.015));border-radius:10px;padding:14px;color:var(--muted)}
+    .details h2{margin:0 0 6px 0;color:var(--text)}
+    .close{position:absolute;top:20px;right:24px;padding:8px;border-radius:8px;background:transparent;border:0;color:var(--muted);cursor:pointer}
+
+    @media (max-width:900px){
+      .modal-content{grid-template-columns:1fr}
+      .modal-left{order:2}
+      .details{order:1}
+    }
+
+    /* small helpers */
+    .badge{background:rgba(223, 18, 18, 0.938);padding:6px 8px;border-radius:6px;font-size:12px}
+    .muted{color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <div class="logo">SABIQUE'S GARAGE</div>
+        <div class="subtitle">Supercars, Sportscars and F1 </div>
+      </div>
+    </header>
+
+    <div class="controls">
+      <div class="search">
+        <input id="searchInput" placeholder="Search by brand..." />
+      </div>
+      <div class="select">
+        <select id="brandFilter">
+          <option value="all">All brands</option>
+          <!-- more options appended by script -->
+        </select>
+      </div>
+      <div style="margin-left:auto" class="badge muted"></div>
+    </div>
+
+    <main>
+      <section class="grid" id="gallery"></section>
+    </main>
+  </div>
+
+  <!-- Modal for large image + details -->
+  <div id="modal" class="modal" aria-hidden="true">
+    <button class="close" id="closeBtn" title="Close (Esc)">✕</button>
+    <div class="modal-content" role="dialog" aria-modal="true">
+      <div class="modal-left">
+        <div class="modal-img-wrap">
+          <img id="modalImg" class="modal-img" src="" alt="Large car view" />
+        </div>
+        <div class="zoom-controls">
+          <button class="btn" id="zoomIn">Zoom +</button>
+          <button class="btn" id="zoomOut">Zoom -</button>
+          <button class="btn" id="resetZoom">Reset</button>
+        </div>
+      </div>
+      <aside class="details" id="detailPanel">
+        <h2 id="detailTitle">Model</h2>
+        <div class="muted" id="detailBrand">Brand</div>
+        <p id="detailDesc" style="margin-top:10px"></p>
+        <ul id="detailSpecs" style="padding-left:18px;margin-top:12px;color:var(--muted)"></ul>
+        <div style="margin-top:12px;font-size:13px;color:var(--muted)">Source: Wikimedia Commons (image URL used)</div>
+      </aside>
+    </div>
+  </div>
+
+  <script>
+    // Sample car data
+    const cars = [
+      {
+        id:1, brand:'BMW', model:'M4 (G82)', year:2021,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/BMW_M4_%28G82%29_in_Adelaide%2C_Australia.jpg/1200px-BMW_M4_%28G82%29_in_Adelaide%2C_Australia.jpg?20250301134359',
+        desc:'High-performance variant of the BMW 4 Series with twin-turbo straight-six and aggressive styling.',
+        specs:['Engine: 3.0L Twin-turbo I6','Power: ~480-510 hp','0-100 km/h: ~3.8s']
+      },
+      {
+        id:2, brand:'Lamborghini', model:'Aventador SVJ', year:2020,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a5/Trois_quarts_arri%C3%A8re_Lamborghini_Aventador_SVJ.jpg/800px-Trois_quarts_arri%C3%A8re_Lamborghini_Aventador_SVJ.jpg',
+        desc:'Naturally-aspirated V12 flagship, focused on aerodynamics and track performance.',
+        specs:['Engine: 6.5L V12','Power: ~770 hp','Top speed: 350+ km/h']
+      },
+      {
+        id:3, brand:'Ferrari', model:'488 Pista', year:2018,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Ferrari_488_Pista_Genf_2018.jpg/1200px-Ferrari_488_Pista_Genf_2018.jpg?20180324152541',
+        desc:'Track-ready version of the 488 with significant aero and power upgrades.',
+        specs:['Engine: 3.9L Twin-turbo V8','Power: ~710 hp','0-100 km/h: ~2.85s']
+      },
+      {
+        id:4, brand:'Mustang', model:'GT (S550)', year:2020,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/2016_Ford_Mustang_GT_S550_Roush.jpg/1200px-2016_Ford_Mustang_GT_S550_Roush.jpg?20241028110848',
+        desc:'American muscle with a modern independent rear suspension and V8 power.',
+        specs:['Engine: 5.0L V8','Power: ~450-480 hp','0-100 km/h: ~4.2s']
+      },
+      {
+        id:5, brand:'F1', model:'Mercedes-AMG Petronas W11', year:2020,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d3/FIA_F1_Austria_2021_Nr._44_Hamilton.jpg/1200px-FIA_F1_Austria_2021_Nr._44_Hamilton.jpg?20210703201745',
+        desc:'Formula 1 world championship car — single-seater open-wheel racer.',
+        specs:['Category: Formula 1','Power unit: Hybrid turbo V6','Note: Not street-legal']
+      },
+      {
+        id:6, brand:'McLaren', model:'F1', year:1998,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/McLaren_F1_3.jpg/1200px-McLaren_F1_3.jpg?20230408181556',
+        desc:'Iconic road-legal supercar with a central driving position and BMW V12.',
+        specs:['Engine: 6.1L V12','Power: ~627 hp','Top speed: 386 km/h (historic record)']
+      },
+      {
+        id:7, brand:'Porsche', model:'911 GT3 RS', year:2021,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/Porsche_992_GT3_RS_DSC_9055.jpg/1200px-Porsche_992_GT3_RS_DSC_9055.jpg?20250629145616',
+        desc:'Track-focused 911 with naturally aspirated engine and dynamic aero.',
+        specs:['Engine: 4.0L Flat-6','Power: ~520 hp','Lightweight track setup']
+      },
+      {
+        id:8, brand:'Ferrari', model:'812 Superfast', year:2018,
+        image:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/2020_Ferrari_812_Superfast_%2844565%29.jpg/1194px-2020_Ferrari_812_Superfast_%2844565%29.jpg?20250808202013',
+        desc:'Ferrari’s front-engine V12 grand tourer with immense naturally aspirated power and classic styling.',
+        specs:['Engine: 6.5L V12','Power: ~789 hp','0-100 km/h: ~2.9s']  // from spec info :contentReference[oaicite:0]{index=0}
+},
+{
+  id:9, brand:'Ferrari', model:'LaFerrari', year:2013,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Ferrari_LaFerrari_at_the_Ferrari_museum.jpg/1200px-Ferrari_LaFerrari_at_the_Ferrari_museum.jpg?20240218195424',
+  desc:'Hybrid hypercar from Ferrari combining massive V12 with KERS system; limited production and cutting-edge tech.',
+  specs:['Engine: 6.3L V12 + hybrid system','Power: ~963 PS total','0-100 km/h: ~2.6s']  // :contentReference[oaicite:1]{index=1}
+},
+{
+  id:10, brand:'BMW', model:'X5 M Competition (F95)', year:2024,
+  image:'https://images.unsplash.com/photo-1599746089331-7818f74830fd?q=80&w=1936&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D',
+  desc:'Large performance SUV; massive power, aggressive styling, balances utility and speed.',
+  specs:['Engine: Twin-Turbo V8','Power: ~617 hp','0-100 km/h: ~3.7s']  // from BMW M line SUV specs :contentReference[oaicite:9]{index=9}
+}
+,{
+  id:11, brand:'McLaren', model:'720S', year:2019,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/McLaren_720S_%2870209%29.jpg/1194px-McLaren_720S_%2870209%29.jpg?20250905210026',
+  desc:'Super Series model with dramatic styling, light carbon monocoque and strong performance.','specs':['Engine: 4.0L Twin-turbo V8','Power: ~720 PS','0-100 km/h: ~2.9s']  // :contentReference[oaicite:2]{index=2}
+},
+{
+  id:12, brand:'Porsche', model:'911 GT2 RS', year:2019,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Porsche_911_GT2_RS_2.jpg/1200px-Porsche_911_GT2_RS_2.jpg?20220701093958',
+  desc:'The most powerful 911 road-car, extreme rear track performance and huge turbo power.',
+  specs:['Engine: 3.8L Twin-turbo Flat-6','Power: ~700 hp','0-100 km/h: ~2.7s']  // from earlier sample
+},
+{
+  id:13, brand:'Lamborghini', model:'Huracán STO', year:2021,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7e/2023_Lamborghini_Huracan_STO_%2880301%29.jpg/1194px-2023_Lamborghini_Huracan_STO_%2880301%29.jpg?20250824103537',
+  desc:'Track-oriented Huracán with reduced weight, improved aero and V10 roar.',
+  specs:['Engine: 5.2L V10','Power: ~640-650 hp','0-100 km/h: ~3.0s']
+},
+{
+  id:14, brand:'Lotus', model:'Evija', year:2023,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/40/Lotus_Evija_%2817464%29.jpg/1200px-Lotus_Evija_%2817464%29.jpg?20250605103453',
+  desc:'All-electric hypercar from Lotus with high output, radical design and new direction for the brand.',
+  specs:['Electric motors: 4','Power: ~1972 hp','0-100 km/h: under 3.0s']  // from TopGear list :contentReference[oaicite:3]{index=3}
+},
+{
+  id:15, brand:'Pininfarina', model:'Battista', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Pininfarina_Battista_Anniversario.jpg/1200px-Pininfarina_Battista_Anniversario.jpg?20210912214847',
+  desc:'Luxury electric hypercar with incredible performance and design by Pininfarina; based on Rimac tech.',
+  specs:['Electric motors: 4','Power: ~1900 hp','0-100 km/h: ~2.0s']
+},
+{
+  id:16, brand:'Lamborghini', model:'Sián FKP 37', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Lamborghini_Si%C3%A1n_FKP_37_Roadster_%28cropped%29.jpg/1200px-Lamborghini_Si%C3%A1n_FKP_37_Roadster_%28cropped%29.jpg?20250831220433',
+  desc:'Hybrid V12 Lamborghini that introduces electrification via supercapacitors; striking design.',
+  specs:['Engine: 6.5L V12 + hybrid system','Power: ~819 hp','0-100 km/h: ~2.8-3.0s']
+},
+{
+  id:17, brand:'Ferrari', model:'296 GTB', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/2023_Ferrari_296_GTB_3.jpg/1200px-2023_Ferrari_296_GTB_3.jpg?20241010130643',
+  desc:'Mid-engine hybrid Ferrari mixing V6 turbo and electric motor; sharp looks, great handling.',
+  specs:['Engine: 3.0L Twin-turbo V6 + electric motor','Power: ~819 hp','0-100 km/h: ~2.9s']
+},
+{
+  id:18, brand:'McLaren', model:'Artura', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/2021_Black_McLaren_Artura.jpg/1200px-2021_Black_McLaren_Artura.jpg?20240130144159',
+  desc:'McLaren’s plug-in hybrid supercar with tech trickle-down, lighter build, good daily usability.',
+  specs:['Engine: 3.0L Twin-turbo V6 + electric motor','Power: ~671 hp','0-100 km/h: ~3.0s']
+},
+{
+  id:19, brand:'Bugatti', model:'Chiron Super Sport 300+', year:2021,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Bugatti_Chiron_%2850176389122%29.jpg/1200px-Bugatti_Chiron_%2850176389122%29.jpg?20220123065731',
+  desc:'Ultra-limited Bugatti made for maximum top speed; quad-turbo W16 pushing boundaries.',
+  specs:['Engine: 8.0L Quad-turbo W16','Power: ~1578 hp','0-100 km/h: ~2.4s']
+},
+{
+  id:20, brand:'Koenigsegg', model:'Jesko', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/2025_Koenigsegg_Jesko_SP25.jpg/1200px-2025_Koenigsegg_Jesko_SP25.jpg?20250831112424',
+  desc:'Absolute hypercar with massive power, advanced aerodynamics and engineering for both road & track.',
+  specs:['Engine: 5.0L Twin-turbo V8','Power: ~1600 hp (on E85)','0-100 km/h: ~2.5s']
+},
+{
+  id:21, brand:'Pagani', model:'Huayra BC', year:2017,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/2017_Pagani_Huayra_BC_in_Blu_Francia%2C_front_left.jpg/1200px-2017_Pagani_Huayra_BC_in_Blu_Francia%2C_front_left.jpg?20240929022650',
+  desc:'Hand-built Italian hypercar, with active aerodynamic elements and intense customization.',
+  specs:['Engine: 6.0L Twin-turbo V12','Power: ~789 hp','0-100 km/h: ~3.0s']
+},
+{
+  id:22, brand:'Aston Martin', model:'Valkyrie', year:2021,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/2022_Aston_Martin_Valkyrie_yellow.jpg/1200px-2022_Aston_Martin_Valkyrie_yellow.jpg?20230528195934',
+  desc:'Radical hybrid hypercar with F1 involvement; extremely low weight, aerodynamics, top-tier materials.',
+  specs:['Engine: 6.5L V12 + electric assist','Power: ~1160 hp','0-100 km/h: ~2.5s']
+},
+{
+  id:25, brand:'Rimac', model:'Nevera', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/2024_Rimac_Nevera_15th_Anniversary_Edition_%2841636%29.jpg/1200px-2024_Rimac_Nevera_15th_Anniversary_Edition_%2841636%29.jpg?20250403095541',
+  desc:'All-electric hypercar with staggering acceleration, cutting-edge battery & motor tech.',
+  specs:['Electric motors: 4','Power: ~1914 hp','0-100 km/h: ~1.85s']
+},
+{
+  id:26, brand:'Mercedes-Benz', model:'AMG roadster', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/74/SLS_AMG_Roadster.jpg/1200px-SLS_AMG_Roadster.jpg?20111104141239',
+  desc:'F1 technology in a road-legal car; hybrid powertrain, extremely high revving and intense handling.',
+  specs:['Engine: 1.6L Turbo V6 + high-output hybrid system','Power: ~1000 hp','0-100 km/h: ~2.9s']
+},
+{
+  id:27, brand:'Lamborghini', model:'Countach LPI 800-4', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a2/Lamborghini_Countach_LPI_800-4_IMG_8003.jpg/1200px-Lamborghini_Countach_LPI_800-4_IMG_8003.jpg?20230723180129',
+  desc:'Modern reinterpretation of the classic Countach using hybrid tech, bold design with iconic angles.',
+  specs:['Engine: ~6.5L V12 + hybrid','Power: ~814 hp','0-100 km/h: ~2.8s']
+},
+{
+  id:28, brand:'Ford', model:'GT', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a0/2021_Ford_GT_Carbon_Series_%2861323%29.jpg/1200px-2021_Ford_GT_Carbon_Series_%2861323%29.jpg?20250531112213',
+  desc:'Modern Ford supercar with mid-engine V6, racing heritage, and aggressive aero.',
+  specs:['Engine: 3.5L Twin-turbo V6','Power: ~660 hp','0-100 km/h: ~3.0s']
+},
+{
+  id:29, brand:'SSC', model:'Tuatara', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/2019_SSC_Tuatara_at_Pebble_Beach_Press_Conference.jpg/1200px-2019_SSC_Tuatara_at_Pebble_Beach_Press_Conference.jpg?20180914052949',  // placeholder; verify actual
+  desc:'American hypercar with extreme top speed ambitions and a powerful twin-turbo V8, flex-fuel capabilities.',
+  specs:[
+    'Engine: 5.9L Twin-turbo V8','Power: ~1,350 hp (91 octane) / ~1,750 hp (E85 fuel)','0-100 km/h: ~2.5s'
+  ]
+},
+{
+  id:30, brand:'Pagani', model:'Huayra Roadster BC', year:2021,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Pagani_Huayra_Roadster_BC_%2851822022318%29.jpg/1200px-Pagani_Huayra_Roadster_BC_%2851822022318%29.jpg?20220301041143',  // verify
+  desc:'Open-top variant of the Huayra BC; retains beautiful bespoke craftsmanship, high torque, limited run.',
+  specs:[
+    'Engine: 6.0L Twin-turbo V12','Power: ~791 hp','Torque: ~1,050 Nm','0-100 km/h: ~3.0-3.2s'
+  ]
+},
+{
+  id:31, brand:'Pagani', model:'Huayra Roadster', year:2019,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/2020_Pagani_Huayra_Roadster_SCD_24.jpg/1200px-2020_Pagani_Huayra_Roadster_SCD_24.jpg?20250812164719',
+  desc:'Convertible version of Pagani’s mid-engine V12 masterpiece; lighter and very exclusive.',
+  specs:[
+    'Engine: 6.0L Twin-turbo V12','Power: ~764 hp','Torque: ~1,000 Nm','0-100 km/h: ~3.0s'
+  ]
+},
+{
+  id:32, brand:'Ferrari', model:'F8 Tributo', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Ferrari_F8_Tributo_Milano.jpg/1085px-Ferrari_F8_Tributo_Milano.jpg?20210612141817',
+  desc:'Mid-engine V8 supercar from Ferrari; sharp handling, updated aerodynamics and great responsiveness.',
+  specs:[
+    'Engine: 3.9L Twin-turbo V8','Power: ~710 hp','0-100 km/h: ~2.9s'
+  ]
+},
+{
+  id:33, brand:'Lamborghini', model:'Huracán Evo', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0f/2019_Lamborghini_Huracan_EVO_Spyder_%282%29.jpg/1200px-2019_Lamborghini_Huracan_EVO_Spyder_%282%29.jpg?20200112232111',
+  desc:'Upgrade over standard Huracán; better aero, updated styling and tech, still naturally aspirated V10.',
+  specs:[
+    'Engine: 5.2L V10','Power: ~630-640 hp','0-100 km/h: ~3.2s'
+  ]
+},
+{
+  id:34, brand:'Chevrolet', model:'Corvette C8 Stingray', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/2023_Chevrolet_Corvette_C8_Stingray_LC24_Low.jpg/1200px-2023_Chevrolet_Corvette_C8_Stingray_LC24_Low.jpg?20240917010429',
+  desc:'First mid-engine Corvette; strong value for performance, attractive styling and Ferrari-competing pace.',
+  specs:[
+    'Engine: 6.2L Naturally aspirated V8','Power: ~490-495 hp','0-100 km/h: ~3.0s'
+  ]
+},
+{
+  id:35, brand:'Aston Martin', model:'Valhalla', year:2024,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Aston_Martin_Valhalla_BS_A25.jpg/1200px-Aston_Martin_Valhalla_BS_A25.jpg?20250520132957',
+  desc:'Hybrid mid-engine supercar; partly electrified, sharp design, more usable than Valkyrie but very high performance.',
+  specs:[
+    'Engine: Twin-turbo V6 + hybrid system','Power: ~1,000 hp (estimate)','0-100 km/h: ~2.5-2.8s'
+  ]
+},
+{
+  id:36, brand:'Bugatti', model:'Bolide', year:2021,
+  image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/2024_Bugatti_Bolide_3.jpg/1200px-2024_Bugatti_Bolide_3.jpg?20240918141053',
+  desc:'Track-focused extreme version hypercar of Bugatti; built for ultra-light weight and extreme downforce.',
+  specs:[
+    'Engine: 8.0L Quad-turbo W16','Power: ~1,600 hp','0-100 km/h: ~2.2s'
+  ]
+},
+{
+  id:37, brand:'McLaren', model:'Senna', year:2018,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Geneva_International_Motor_Show_2018%2C_Le_Grand-Saconnex_%281X7A0424%29.jpg/1200px-Geneva_International_Motor_Show_2018%2C_Le_Grand-Saconnex_%281X7A0424%29.jpg?20180310124142',
+  desc:'Track-oriented homologation special from McLaren; named after Ayrton Senna; brutal downforce and driver engagement.',
+  specs:[
+    'Engine: 4.0L Twin-turbo V8','Power: ~789 hp','0-100 km/h: ~2.8s'
+  ]
+},
+{
+  id:38, brand:'Koenigsegg', model:'Regera', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cb/Koenigsegg_Regera_14.jpg/1200px-Koenigsegg_Regera_14.jpg?20241119174349',
+  desc:'Hybrid hypercar; uses a direct drive instead of a normal transmission, massive torque, luxurious and fast.',
+  specs:[
+    'Engine: Twin-turbo V8 + electric motors','Power: ~1,500 hp total','0-100 km/h: ~2.8s'
+  ]
+},
+{
+  id:39, brand:'Lamborghini', model:'Aventador SVJ Roadster', year:2019,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Lamborghini_Aventador_SVJ_Roadster_%2851722816025%29.jpg/1200px-Lamborghini_Aventador_SVJ_Roadster_%2851722816025%29.jpg?20220123012540',
+  desc:'Open-top version of Aventador SVJ; loud, spectacular presence, huge V12 naturally aspirated engine.',
+  specs:[
+    'Engine: 6.5L V12','Power: ~770 hp','0-100 km/h: ~2.9s'
+  ]
+},
+{
+  id:40, brand:'Nissan', model:'GT-R Nismo', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/dc/Nissan_GT-R_Nismo_%28R35%29%2C_2022%2C_front.jpg/1200px-Nissan_GT-R_Nismo_%28R35%29%2C_2022%2C_front.jpg?20220213112308',
+  desc:'Japanese supercar with strong performance, advanced all-wheel drive, tuned for track use.',
+  specs:[
+    'Engine: 3.8L Twin-turbo V6','Power: ~600 hp','0-100 km/h: ~2.7-2.8s'
+  ]
+},
+{
+  id:41, brand:'Porsche', model:'Taycan Turbo S', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Porsche_Taycan_Turbo_S_%282022%29_%2852575650660%29.jpg/1199px-Porsche_Taycan_Turbo_S_%282022%29_%2852575650660%29.jpg?20221225213821',
+  desc:'Electric super-saloon/hypercar; huge instant torque, great tech; pushing EV boundaries while retaining sport focus.',
+  specs:[
+    'Electric motors: dual/multiple','Power: ~750 hp','0-100 km/h: ~2.8s'
+  ]
+},
+{
+  id:42, brand:'Lotus', model:'Evija', year:2023,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e0/2023_Lotus_Evija_3.jpg/1200px-2023_Lotus_Evija_3.jpg?20241219055632',
+  desc:'Full electric hypercar, extremely limited, striking design, ultra high power to weight ratio.',
+  specs:[
+    'Electric motors: 4','Power: ~1,972 hp','0-100 km/h: ~3.0s or under'
+  ]
+},
+{
+  id:41, brand:'Riac', model:'Nevera', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Rimac_Nevera.jpg/1920px-Rimac_Nevera.jpg',
+  desc:'Electric hypercar with blinding acceleration; showcases battery & motor tech at the high end.',
+  specs:[
+    'Electric motors: 4','Power: ~1,914 hp','0-100 km/h: ~1.85s'
+  ]
+},
+{
+  id:42, brand:'Mercedes-Benz', model:'AMG One', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Mercedes-AMG_Project_One%2C_Frankfurt_%281Y7A3473%29.jpg/1200px-Mercedes-AMG_Project_One%2C_Frankfurt_%281Y7A3473%29.jpg?20171001105647',
+  desc:'F1 derived hybrid powertrain in a road-legal form; very high revs, very compact and very extreme.',
+  specs:[
+    'Engine: 1.6L Turbo V6 + electric motors','Power: ~1,000 hp','0-100 km/h: ~2.9s'
+  ]
+},
+{
+  id:43, brand:'Zeekr', model:'Zeekr CAR Utopian Concept', year:2024,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0a/2022_Zeekr_001_%28front%29.jpg/1280px-2022_Zeekr_001_%28front%29.jpg',
+  desc:'Concept hypercar / showcase from a newer brand; electric power and futuristic design.',
+  specs:[
+    'Electric motors: multiple','Power: ~1,400-1,800 hp estimated','0-100 km/h: ~2.5-3.0s'
+  ]
+},
+{
+  id:44, brand:'Hennessey', model:'Venom F5', year:2023,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2d/2022_Hennessey_Venom_F5.jpg/1280px-2022_Hennessey_Venom_F5.jpg',
+  desc:'Designed for top speed; aims to exceed 300-mph barrier; extreme power-to-weight and aerodynamics.',
+  specs:[
+    'Engine: Twin-turbo V8','Power: ~1,817 hp','0-100 km/h: ~2.6s'
+  ]
+},
+{
+  id:45, brand:'Lamborghini', model:'Revuelto', year:2023,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/96/Lamborghini_Revuelto_IMG_0562.jpg/1200px-Lamborghini_Revuelto_IMG_0562.jpg?20240809194825',
+  desc:'Newest hybrid V12/R-V6 hypercar from Lamborghini; blending hybrid tech with signature V12 roar.',
+  specs:[
+    'Engine: V12 + hybrid','Power: ~1,015 hp','0-100 km/h: ~2.5s'
+  ]
+},
+{
+  id:46, brand:"Mustang",model:"Dark Horse",year:2024,
+    image:"https://bringatrailer.com/wp-content/uploads/2023/09/2024_ford_dark-horse-mustang_yej1mkqm-44570.jpeg?w=1536>",
+    desc:"High-performance naturally aspirated V8 variant in latest gen Mustang; track capable.",
+    specs:["Engine: 5.0 L Coyote V8 (modified)", 
+      "Power: ~500 hp / ~507 PS",  // :contentReference[oaicite:2]{index=2}
+      "0-100 km/h: ~4.0s",  // estimated
+    ]
+  },
+{
+  id:48, brand:'BMW', model:'M8 COMPETITION', year:1978,
+  image:'https://www.alainclass.com/wp-content/uploads/2024/01/2024-BMW-M8-Competition-Grey-3564-6.jpg',  
+  desc:'BMW S63 — high-performance twin-turbo V8 ',  
+  specs:['ENGINE:4.4 L V8 Twin-Turbo ','Power: ~625 hp','0-100 km/h: ~3.2s']  // approximate specs from wiki :contentReference[oaicite:0]{index=0}
+},
+{
+  id:49, brand:'BMW', model:'M5 Competition (F90 )', year:2021,
+  image:'https://spots.ag/2024/02/21/bmw-m5-f90-competition-2021-c389221022024203029_1.jpg?1708543861',  
+  desc:'High performance luxury sedan combining blistering speed',  
+  specs:['Engine: 4.4 L Twin-Turbo V8,617-625 hp','0-100 km/h: ~3.3 s']
+},
+{
+  id:50, brand:'BMW', model:'i8', year:2014,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/43/2014_BMW_i8_3.jpg/1200px-2014_BMW_i8_3.jpg?20240905192501',  
+  desc:'Plug-in hybrid sports car; futuristic design, combines electric motors + petrol engine for performance and efficiency.',  
+  specs:['Engine: 1.5 L turbo I3 + electric motors','Power: ~369 hp','0-100 km/h: ~4.4s'] 
+},
+{
+  id:51, brand:'BMW', model:'M4 CSL (G82)', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4d/BMW_M4_CSL_Coup%C3%A9_%28G82%2C_2022%29_%2852569510663%29.jpg/1200px-BMW_M4_CSL_Coup%C3%A9_%28G82%2C_2022%29_%2852569510663%29.jpg?20230122072007',  
+  desc:'Track-focused version of the BMW M4 with weight reduction, enhanced aerodynamics and upgraded components.',  
+  specs:['Engine: 3.0 L twin-turbo I6','Power: ~543 hp','0-100 km/h: ~3.7s'] 
+},
+{
+  id:52, brand:'BMW', model:'M8 GTE', year:2018,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8b/BMW_M8_GTE_%28cropped%29.jpg/1200px-BMW_M8_GTE_%28cropped%29.jpg?20211208013524',  
+  desc:'Grand tourer race car built to LM GTE homologation based on BMW M8; used in endurance racing series like Le Mans and IMSA.',  
+  specs:['Engine: P63/1 turbocharged V8','Power: ~500-600+ hp depending on spec','Focus: endurance, aerodynamics, reliability'] 
+},
+{
+  id:53, brand:'Ferrari', model:'SF90 Stradale', year:2019,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Ferrari_SF90_Stradale_Washington_DC_Metro_Area%2C_USA_%282.5%29.jpg/1125px-Ferrari_SF90_Stradale_Washington_DC_Metro_Area%2C_USA_%282.5%29.jpg?20250816051137',  // Wikimedia Commons image :contentReference[oaicite:0]{index=0}
+  desc:'Flagship plug-in hybrid supercar from Ferrari; combining V8 + 3 electric motors, with extreme performance and advanced aerodynamics.',  
+  specs:['Engine: 4.0L Twin-Turbo V8 + 3 electric motors','Power: ~986-1000 hp','0-100 km/h: ~2.5s']  // :contentReference[oaicite:1]{index=1}
+},
+{
+  id:54, brand:'Ferrari', model:'Portofino M', year:2021,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d0/Ferrari_Portofino_Miami_Metro_Area%2C_USA.jpg/1125px-Ferrari_Portofino_Miami_Metro_Area%2C_USA.jpg?20250115192953',  // example, verify license
+  desc:'2+2 grand tourer convertible; sporty and luxurious blend with retractable hard top.',  
+  specs:['Engine: 3.9L Twin-Turbo V8','Power: ~620 hp','0-100 km/h: ~3.45s']
+},
+{
+  id:55, brand:'Ferrari', model:'Roma', year:2020,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5b/2022_Ferrari_Roma_5.jpg/1200px-2022_Ferrari_Roma_5.jpg?20241011074233',  // Wikimedia Commons image :contentReference[oaicite:2]{index=2}
+  desc:'Elegant front-mid engine 2+ GT coupe; refined styling and luxury with solid performance.',  
+  specs:['Engine: 3.9L Twin-Turbo V8','Power: ~612 hp','0-100 km/h: ~3.4-3.5s']  // :contentReference[oaicite:3]{index=3}
+},
+{
+  id:56, brand:'Ferrari', model:'GTC4Lusso', year:2016,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/46/2018_Ferrari_GTC4_Lusso_2.jpg/1200px-2018_Ferrari_GTC4_Lusso_2.jpg?20241016193529',  // example; verify
+  desc:'Four-seat grand tourer with V12 (or V8 in “T” version), combining performance + more practicality.',  
+  specs:['Engine: 6.3L V12','Power: ~690 PS','0-100 km/h: ~3.4s']
+},
+{
+  id:57, brand:'Ferrari', model:'Monza SP1', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Festival_automobile_international_2019_-_Ferrari_Monza_SP1_-_004.jpg/1200px-Festival_automobile_international_2019_-_Ferrari_Monza_SP1_-_004.jpg?20220322193949',  // example; check license
+  desc:'Single-seat roadster with a wild open-top design; tribute to Ferrari’s early racing heritage.',  
+  specs:['Engine: 6.5L V12','Power: ~810 PS','0-100 km/h: ~2.9s']
+},
+{
+  id:58, brand:'Ferrari', model:'Monza SP2', year:2022,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/2020_Ferrari_Monza_SP2.jpg/1200px-2020_Ferrari_Monza_SP2.jpg?20241016191909',  // example; verify
+  desc:'Same platform as SP1 but two seats; Icona limited-series with extreme styling and V12 power.',  
+  specs:['Engine: 6.5L V12','Power: ~810 PS','0-100 km/h: ~2.9s']  // :contentReference[oaicite:4]{index=4}
+},
+{
+  id:59, brand:'Ferrari', model:'599 GTO', year:2010,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/2011_Ferrari_599_GTO_Sa_Aperta.jpg/1200px-2011_Ferrari_599_GTO_Sa_Aperta.jpg?20241017204048',  // example; verify
+  desc:'High-performance V12 grand tourer from early 2010s; analog feel, rare model, track capable.',  
+  specs:['Engine: 6.0L V12','Power: ~670 CV','0-100 km/h: ~3.35s']
+},
+{
+  id:60, brand:'Ferrari', model:'Daytona SP3', year:2023,
+  image:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Ferrari_Daytona_SP3_%2882743%29.jpg/1194px-Ferrari_Daytona_SP3_%2882743%29.jpg?20250807183842',  // example; check license
+  desc:'Limited production Icona model; mid-engine V12, exotic design and ultra-exclusive.',  
+  specs:['Engine: 6.5L V12','Power: ~840 PS','0-100 km/h: ~2.95-3.0s']
+},
+];
+
+    // Populate brand filter options (unique brands)
+    const brandFilterSelect = document.getElementById('brandFilter');
+    const uniqueBrands = Array.from(new Set(cars.map(c => c.brand)));
+    uniqueBrands.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b;
+      opt.textContent = b;
+      brandFilterSelect.appendChild(opt);
+    });
+
+    // DOM elements
+    const gallery = document.getElementById('gallery');
+    const searchInput = document.getElementById('searchInput');
+    const brandFilter = document.getElementById('brandFilter');
+
+    // Render function
+    function render(items){
+      gallery.innerHTML = items.map(car => `
+        <article class="card" data-id="${car.id}" data-brand="${car.brand}" data-model="${car.model}">
+          <img loading="lazy" src="${car.image}" alt="${car.brand} ${car.model}" class="thumb" data-id="${car.id}" />
+          <div class="meta">
+            <h4>${car.model}</h4>
+            <div class="brand">${car.brand} • ${car.year}</div>
+          </div>
+          <div class="specs">${car.desc}</div>
+        </article>
+      `).join('');
+    }
+
+    // Initial render
+    render(cars);
+
+    // Filtering
+    function filterAndRender(){
+      const q = searchInput.value.trim().toLowerCase();
+      const selectedBrand = brandFilter.value;
+      const filtered = cars.filter(c => {
+        if(selectedBrand !== 'all' && c.brand !== selectedBrand) return false;
+        if(!q) return true;
+        const combined = (c.brand + ' ' + c.model + ' ' + c.year + ' ' + c.desc + ' ' + (c.specs || []).join(' ')).toLowerCase();
+        return combined.includes(q);
+      });
+      render(filtered);
+    }
+
+    searchInput.addEventListener('input', filterAndRender);
+    brandFilter.addEventListener('change', filterAndRender);
+
+    // Modal logic
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modalImg');
+    const detailTitle = document.getElementById('detailTitle');
+    const detailBrand = document.getElementById('detailBrand');
+    const detailDesc = document.getElementById('detailDesc');
+    const detailSpecs = document.getElementById('detailSpecs');
+    const closeBtn = document.getElementById('closeBtn');
+    const zoomInBtn = document.getElementById('zoomIn');
+    const zoomOutBtn = document.getElementById('zoomOut');
+    const resetZoomBtn = document.getElementById('resetZoom');
+
+    let currentScale = 1;
+    const SCALE_STEP = 0.15;
+
+    function openModal(car){
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden','false');
+      modalImg.src = car.image;
+      modalImg.style.transform = 'scale(1)';
+      currentScale = 1;
+      detailTitle.textContent = car.model;
+      detailBrand.textContent = `${car.brand} • ${car.year}`;
+      detailDesc.textContent = car.desc;
+      detailSpecs.innerHTML = (car.specs || []).map(s => `<li>${s}</li>`).join('');
+      closeBtn.focus();
+    }
+
+    function closeModal(){
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden','true');
+      modalImg.src = '';
+    }
+
+    gallery.addEventListener('click', (e) => {
+      const img = e.target.closest('.thumb');
+      if(!img) return;
+      const id = Number(img.dataset.id);
+      const car = cars.find(c => c.id === id);
+      if(car) openModal(car);
+    });
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+      if(e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape') closeModal();
+    });
+
+    zoomInBtn.addEventListener('click', () => {
+      currentScale += SCALE_STEP;
+      modalImg.style.transform = `scale(${currentScale})`;
+    });
+    zoomOutBtn.addEventListener('click', () => {
+      currentScale = Math.max(0.3, currentScale - SCALE_STEP);
+      modalImg.style.transform = `scale(${currentScale})`;
+    });
+    resetZoomBtn.addEventListener('click', () => {
+      currentScale = 1;
+      modalImg.style.transform = 'scale(1)';
+    });
+
+    // Double click to toggle zoom
+    modalImg.addEventListener('dblclick', () => {
+      currentScale = (currentScale > 1) ? 1 : 2;
+      modalImg.style.transform = `scale(${currentScale})`;
+    });
+  </script>
+</body>
+</html>
